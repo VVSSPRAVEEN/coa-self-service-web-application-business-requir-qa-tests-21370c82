@@ -19,7 +19,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:4173",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:4173",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -37,7 +37,9 @@ export default defineConfig({
       use: { ...devices["Desktop Safari"] },
     },
   ],
-  webServer: {
+  webServer: process.env.PLAYWRIGHT_BASE_URL
+    ? undefined
+    : {
     command: "npm run build && npm run preview -- --port 4173 --strictPort",
     cwd: "../frontend",
     port: 4173,
@@ -52,5 +54,5 @@ export default defineConfig({
     env: {
       VITE_AUTH_STUB_ENABLED: "true",
     },
-  },
+    },
 });
