@@ -1,0 +1,20 @@
+{
+  "name": "coa-portal-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:ui": "npx playwright test --ui",
+    "test:headed": "npx playwright test --headed",
+    "test:codegen": "npx playwright codegen",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "coa-portal": "file:../frontend"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^20.10.0"
+  }
+}
