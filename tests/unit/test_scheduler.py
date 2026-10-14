@@ -198,9 +198,9 @@ class TestBottomlineIngestJob:
 
         assert outcome.skipped == 1
         assert outcome.processed == 0
-        assert [p.name for p in workspace["processed"].iterdir()] == [
-            "BATCH_9004_001.txt",
+        assert sorted(p.name for p in workspace["processed"].iterdir()) == [
             "BATCH_9004_001.1.txt",
+            "BATCH_9004_001.txt",
         ]
 
     def test_a_missing_drop_directory_is_a_no_op_not_a_failure(self, tmp_path) -> None:
