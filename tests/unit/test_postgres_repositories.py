@@ -30,9 +30,10 @@ import json
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Self
 
 import pytest
 
@@ -46,8 +47,8 @@ from src.admin.plant_mapping.service import DuplicateMappingError, PlantMappingS
 from src.admin.users import (
     DuplicateUserError,
     PostgresUserRegistry,
-    UserNotFoundError,
     UserDTO,
+    UserNotFoundError,
     _store,
     create_external_account,
     get_user,
@@ -99,12 +100,12 @@ def _normalize(sql: str) -> str:
 class FakeCursor:
     """A DB-API cursor that answers from the connection's canned responses."""
 
-    def __init__(self, connection: "RecordingConnection") -> None:
+    def __init__(self, connection: RecordingConnection) -> None:
         self._connection = connection
-        self._rows: List[Any] = []
+        self._rows: list[Any] = []
         self.closed = False
 
-    def execute(self, sql: str, params: Sequence[Any] = ()) -> "FakeCursor":
+    def execute(self, sql: str, params: Sequence[Any] = ()) -> FakeCursor:
         self._connection.statements.append((_normalize(sql), tuple(params)))
         self._rows = self._connection.respond(sql, params)
         return self
@@ -112,17 +113,17 @@ class FakeCursor:
     def fetchone(self) -> Any:
         return self._rows.pop(0) if self._rows else None
 
-    def fetchall(self) -> List[Any]:
+    def fetchall(self) -> list[Any]:
         rows, self._rows = list(self._rows), []
         return rows
 
     def close(self) -> None:
         self.closed = True
 
-    def __enter__(self) -> "FakeCursor":
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *exc_info: Any) -> None:
+    def __exit__(self, *exc_info: object) -> None:
         self.close()
 
 
@@ -138,28 +139,28 @@ class RecordingConnection:
 
     def __init__(
         self,
-        responses: Sequence[Tuple[str, Sequence[Any]]] = (),
+        responses: Sequence[tuple[str, Sequence[Any]]] = (),
     ) -> None:
-        self.statements: List[Tuple[str, Tuple[Any, ...]]] = []
+        self.statements: list[tuple[str, tuple[Any, ...]]] = []
         self.commits = 0
         self.rollbacks = 0
         self.closed = False
         self._responses = list(responses)
-        self.cursors: List[FakeCursor] = []
+        self.cursors: list[FakeCursor] = []
 
     def cursor(self) -> FakeCursor:
         cursor = FakeCursor(self)
         self.cursors.append(cursor)
         return cursor
 
-    def respond(self, sql: str, params: Sequence[Any]) -> List[Any]:
+    def respond(self, sql: str, params: Sequence[Any]) -> list[Any]:
         normalized = _normalize(sql)
         for matcher, rows in self._responses:
             if _normalize(matcher) in normalized:
                 return list(rows)
         return []
 
-    def statement_matching(self, fragment: str) -> Optional[Tuple[str, Tuple[Any, ...]]]:
+    def statement_matching(self, fragment: str) -> tuple[str, tuple[Any, ...]] | None:
         """Return the first recorded statement containing ``fragment``."""
         needle = _normalize(fragment)
         for sql, params in self.statements:
@@ -167,7 +168,7 @@ class RecordingConnection:
                 return sql, params
         return None
 
-    def statements_matching(self, fragment: str) -> List[Tuple[str, Tuple[Any, ...]]]:
+    def statements_matching(self, fragment: str) -> list[tuple[str, tuple[Any, ...]]]:
         """Return every recorded statement containing ``fragment``."""
         needle = _normalize(fragment)
         return [(sql, params) for sql, params in self.statements if needle in sql]
@@ -204,9 +205,9 @@ class PlantMappingDatabase(RecordingConnection):
 
     def __init__(self) -> None:
         super().__init__()
-        self.rows: List[Dict[str, Any]] = []
+        self.rows: list[dict[str, Any]] = []
 
-    def respond(self, sql: str, params: Sequence[Any]) -> List[Any]:
+    def respond(self, sql: str, params: Sequence[Any]) -> list[Any]:
         normalized = _normalize(sql)
         if normalized.startswith("INSERT INTO plant_mappings"):
             row = dict(zip(self._COLUMNS, params))
@@ -239,7 +240,7 @@ class PlantMappingDatabase(RecordingConnection):
             return list(self.rows)
         return []
 
-    def _find(self, mapping_uuid: Any) -> Optional[Dict[str, Any]]:
+    def _find(self, mapping_uuid: Any) -> dict[str, Any] | None:
         return next(
             (row for row in self.rows if row["mapping_uuid"] == mapping_uuid), None
         )
@@ -272,9 +273,9 @@ class AuditTrailDatabase(RecordingConnection):
 
     def __init__(self) -> None:
         super().__init__()
-        self.rows: List[Dict[str, Any]] = []
+        self.rows: list[dict[str, Any]] = []
 
-    def respond(self, sql: str, params: Sequence[Any]) -> List[Any]:
+    def respond(self, sql: str, params: Sequence[Any]) -> list[Any]:
         normalized = _normalize(sql)
         if "pg_advisory_xact_lock" in normalized:
             return []
@@ -290,7 +291,7 @@ class AuditTrailDatabase(RecordingConnection):
             return self._select(normalized)
         return []
 
-    def _select(self, normalized: str) -> List[Dict[str, Any]]:
+    def _select(self, normalized: str) -> list[dict[str, Any]]:
         matched = list(self.rows)
         where = ""
         if "WHERE coa_id =" in normalized:
@@ -314,8 +315,8 @@ def _mapping_row(
     *,
     sister: str = "PLANT-B",
     active: bool = True,
-    updated_by: Optional[str] = "admin-user-1",
-) -> Dict[str, Any]:
+    updated_by: str | None = "admin-user-1",
+) -> dict[str, Any]:
     """One ``plant_mappings`` row in the shape the repository reads."""
     return {
         "mapping_uuid": mapping_uuid,
@@ -324,12 +325,12 @@ def _mapping_row(
         "active": active,
         "created_by": "admin-user-1",
         "updated_by": updated_by,
-        "created_at": datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc),
-        "updated_at": datetime(2026, 3, 2, 9, 30, tzinfo=timezone.utc),
+        "created_at": datetime(2026, 3, 1, 12, 0, tzinfo=UTC),
+        "updated_at": datetime(2026, 3, 2, 9, 30, tzinfo=UTC),
     }
 
 
-def _user_row(user_id: str = "u-1", username: str = "dana.ops") -> Dict[str, Any]:
+def _user_row(user_id: str = "u-1", username: str = "dana.ops") -> dict[str, Any]:
     """One ``admin_users`` row in the shape the registry reads."""
     return {
         "user_id": user_id,
@@ -337,7 +338,7 @@ def _user_row(user_id: str = "u-1", username: str = "dana.ops") -> Dict[str, Any
         "email": "dana.ops@example.com",
         "role": "3pl",
         "organization": "Harbor Freight",
-        "created_at": datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc),
+        "created_at": datetime(2026, 3, 1, 12, 0, tzinfo=UTC),
     }
 
 
@@ -427,7 +428,7 @@ class TestInjectedConnectionsAreNotOwned:
         assert fake.rollbacks == 0
 
     def test_a_dsn_owns_the_connection_it_opens(self, monkeypatch) -> None:
-        opened: List[RecordingConnection] = []
+        opened: list[RecordingConnection] = []
 
         def fake_connect(dsn: str) -> RecordingConnection:
             conn = RecordingConnection()
@@ -645,7 +646,7 @@ class TestPostgresUserRegistry:
 
     def test_a_unique_violation_is_reported_as_the_typed_domain_error(self) -> None:
         class RejectingConnection(RecordingConnection):
-            def respond(self, sql: str, params: Sequence[Any]) -> List[Any]:
+            def respond(self, sql: str, params: Sequence[Any]) -> list[Any]:
                 if _normalize(sql).startswith("INSERT INTO admin_users"):
                     raise _UniqueViolation("duplicate key value")
                 return super().respond(sql, params)
@@ -793,7 +794,7 @@ class TestPostgresAuditStorage:
             "coa:COA-1003",
         ]
         assert storage.count() == 3
-        cutoff = datetime(2030, 1, 1, tzinfo=timezone.utc)
+        cutoff = datetime(2030, 1, 1, tzinfo=UTC)
         assert len(storage.get_older_than(cutoff)) == 3
         assert db.statement_matching("WHERE coa_id = %s") is not None
         assert db.statement_matching("WHERE event_type = %s") is not None
@@ -914,16 +915,15 @@ def _live_dsn() -> str:
     psycopg2 = pytest.importorskip("psycopg2")
     try:
         conn = psycopg2.connect(dsn, connect_timeout=3)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - any driver error means the live DB is unavailable
         pytest.skip(f"live audit database is unavailable: {exc}")
-    with conn:
-        with conn.cursor() as cursor:
-            cursor.execute(
-                "SELECT count(*) FROM information_schema.tables "
-                "WHERE table_schema = 'public' AND table_name IN "
-                "('audit_events', 'plant_mappings', 'admin_users')"
-            )
-            row = cursor.fetchone()
+    with conn, conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT count(*) FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name IN "
+            "('audit_events', 'plant_mappings', 'admin_users')"
+        )
+        row = cursor.fetchone()
     if not row or int(row[0]) < 3:
         pytest.skip("live audit database has not had migrations applied")
     return dsn
@@ -946,9 +946,8 @@ class TestLiveRoundTrip:
             assert unique in [user.username for user in list_users()]
             assert update_role(created.user_id, "customer").role == "customer"
         finally:
-            with connection(dsn) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute("DELETE FROM admin_users WHERE user_id = %s", (created.user_id,))
+            with connection(dsn) as conn, conn.cursor() as cursor:
+                cursor.execute("DELETE FROM admin_users WHERE user_id = %s", (created.user_id,))
 
     @pytest.mark.asyncio
     async def test_a_mapping_round_trips_through_postgres(self) -> None:
@@ -968,11 +967,10 @@ class TestLiveRoundTrip:
             assert await repo.delete(created.id) is True
             assert await repo.get_by_id(created.id) is None
         finally:
-            with connection(dsn) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(
-                        "DELETE FROM plant_mappings WHERE mapping_uuid = %s", (created.id,)
-                    )
+            with connection(dsn) as conn, conn.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM plant_mappings WHERE mapping_uuid = %s", (created.id,)
+                )
 
     def test_an_audit_chain_verifies_after_a_round_trip(self) -> None:
         dsn = _live_dsn()
@@ -993,8 +991,7 @@ class TestLiveRoundTrip:
             first.event_id
         ]
         assert storage.get_by_resource(f"coa:{tag}-2")[0].entry_hash == second.entry_hash
-        assert storage.get_older_than(datetime(2030, 1, 1, tzinfo=timezone.utc))
+        assert storage.get_older_than(datetime(2030, 1, 1, tzinfo=UTC))
 
-        with connection(dsn) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("DELETE FROM audit_events WHERE coa_id LIKE %s", (f"coa:{tag}-%",))
+        with connection(dsn) as conn, conn.cursor() as cursor:
+            cursor.execute("DELETE FROM audit_events WHERE coa_id LIKE %s", (f"coa:{tag}-%",))

@@ -27,7 +27,6 @@ from src.integration.bottomline.transformer import (
     transform_to_coa_records,
 )
 
-
 VALID_FLAT_CONTENT = (
     "COA-001|PROD-A|LOT-100|PH|7.2|pH|6.5|8.5|2024-01-15T10:30:00\n"
     "COA-001|PROD-A|LOT-100|VISCOSITY|150|cP|100|200|2024-01-15T10:31:00\n"

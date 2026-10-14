@@ -16,8 +16,9 @@ Three properties matter and are pinned here:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date, timedelta
-from typing import Any, Iterable
+from typing import Any
 
 import pytest
 

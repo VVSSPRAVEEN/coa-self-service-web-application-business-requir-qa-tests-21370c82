@@ -10,7 +10,7 @@ record never reports, and the typed error the HTTP layer maps to ``409``.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -49,7 +49,7 @@ def _complete_record() -> COARecord:
         completion_status=CompletionStatus.COMPLETED,
         status="completed",
         test_results=PASSING_RESULTS,
-        generated_at=datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 3, 1, 12, 0, tzinfo=UTC),
     )
 
 

@@ -22,17 +22,17 @@ Three contracts are asserted:
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
 from src.discovery.search_filters import (
-    COAFilterValidationError,
     FILTER_FIELDS,
     STATUS_ALIASES,
     VALID_STATUSES,
+    COAFilterValidationError,
     apply_filters,
     matches_filters,
     normalize_date,
@@ -44,7 +44,7 @@ LOGGER_NAME = "src.discovery.search_filters"
 
 
 def _coa(**overrides: Any) -> SimpleNamespace:
-    fields: Dict[str, Any] = {
+    fields: dict[str, Any] = {
         "coa_number": "COA-1001",
         "customer_name": "Harbor Freight",
         "plant_code": "PLANT-A",
@@ -198,7 +198,7 @@ class TestDateNormalization:
             ("2026-03-01T10:30:00Z", "2026-03-01"),
             ("2026-03-01T10:30:00+02:00", "2026-03-01"),
             (date(2026, 3, 1), "2026-03-01"),
-            (datetime(2026, 3, 1, 10, 30, tzinfo=timezone.utc), "2026-03-01"),
+            (datetime(2026, 3, 1, 10, 30, tzinfo=UTC), "2026-03-01"),
         ],
     )
     def test_the_accepted_shapes_all_normalize_to_iso_day(
@@ -223,7 +223,7 @@ class TestDateNormalization:
 
     def test_dates_are_normalized_on_the_way_into_the_mapping(self) -> None:
         filters = parse_filters(
-            start_date="2026/01/01", end_date=datetime(2026, 3, 31, 8, 0, tzinfo=timezone.utc)
+            start_date="2026/01/01", end_date=datetime(2026, 3, 31, 8, 0, tzinfo=UTC)
         )
 
         assert filters == {"start_date": "2026-01-01", "end_date": "2026-03-31"}
@@ -320,7 +320,7 @@ class TestFilterApplication:
         ] == ["COA-1002"]
 
     def test_the_criteria_are_combined_conjunctively(self) -> None:
-        records: List[SimpleNamespace] = [
+        records: list[SimpleNamespace] = [
             _coa(coa_number="COA-1001"),
             _coa(coa_number="COA-1002", plant_code="PLANT-B"),
         ]

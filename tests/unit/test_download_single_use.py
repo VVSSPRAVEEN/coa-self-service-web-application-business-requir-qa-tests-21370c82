@@ -18,8 +18,9 @@ drift onto a different instance.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Iterator, Optional
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -151,7 +152,7 @@ class _StubCoaService:
     async def search_coa(self, filters: Any) -> list[COARecord]:
         return list(self._records)
 
-    async def get_coa_by_number(self, coa_number: str) -> Optional[COARecord]:
+    async def get_coa_by_number(self, coa_number: str) -> COARecord | None:
         return self._by_number.get(coa_number)
 
 
@@ -163,9 +164,9 @@ class _StubPresignedService:
         self,
         key: str,
         method: str = "GET",
-        expiry_seconds: Optional[int] = None,
-        user_id: Optional[str] = None,
-        coa_id: Optional[str] = None,
+        expiry_seconds: int | None = None,
+        user_id: str | None = None,
+        coa_id: str | None = None,
     ) -> PresignedUrlResult:
         self.calls.append({"key": key, "user_id": user_id, "coa_id": coa_id})
         return PresignedUrlResult(
@@ -173,7 +174,7 @@ class _StubPresignedService:
             bucket="coa-documents",
             key=key,
             method="GET",
-            expires_at=datetime.now(timezone.utc) + timedelta(seconds=900),
+            expires_at=datetime.now(UTC) + timedelta(seconds=900),
             request_id="stub-request-id",
             scope_hash="stub-scope-hash",
         )

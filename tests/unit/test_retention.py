@@ -17,7 +17,7 @@ guarantee, a record under legal hold, is likewise a skip under
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -28,7 +28,7 @@ from src.audit.retention.policy import (
     RetentionConfig,
 )
 
-REFERENCE = datetime(2026, 3, 31, tzinfo=timezone.utc)
+REFERENCE = datetime(2026, 3, 31, tzinfo=UTC)
 ISSUED = REFERENCE - timedelta(days=MINIMUM_RETENTION_DAYS)
 
 
@@ -50,12 +50,12 @@ class TestMinimumWindow:
         assert (expiry - ISSUED).days == 1826
 
     def test_a_naive_timestamp_is_treated_as_utc(self) -> None:
-        naive = datetime(2026, 3, 31)
+        naive = datetime(2026, 3, 31)  # noqa: DTZ001 - the naive input is the point of this test
 
         expiry = RetentionPolicy().get_expiry_date(naive)
 
-        assert expiry == naive.replace(tzinfo=timezone.utc) + timedelta(days=1826)
-        assert expiry.tzinfo is timezone.utc
+        assert expiry == naive.replace(tzinfo=UTC) + timedelta(days=1826)
+        assert expiry.tzinfo is UTC
 
     def test_a_configured_shorter_window_fails_the_five_year_check(self) -> None:
         policy = RetentionPolicy(RetentionConfig(retention_days=365))

@@ -19,7 +19,7 @@ Backoff delays are set to zero in the fixtures so the retry tests assert the
 from __future__ import annotations
 
 import base64
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -56,8 +56,8 @@ class CountingTransport:
         recipients: list[str],
         subject: str,
         body_text: str,
-        body_html: Optional[str] = None,
-        attachments: Optional[list[dict[str, Any]]] = None,
+        body_html: str | None = None,
+        attachments: list[dict[str, Any]] | None = None,
     ) -> bool:
         self.attempts += 1
         if self.attempts <= self.failures:

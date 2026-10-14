@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -88,7 +88,7 @@ def _ensure_bucket(client: Any, botocore_exceptions: Any, bucket: str) -> None:
         if status not in (403, 404):
             raise
 
-    arguments: Dict[str, Any] = {"Bucket": bucket}
+    arguments: dict[str, Any] = {"Bucket": bucket}
     if S3_REGION != "us-east-1":
         arguments["CreateBucketConfiguration"] = {"LocationConstraint": S3_REGION}
     client.create_bucket(**arguments)

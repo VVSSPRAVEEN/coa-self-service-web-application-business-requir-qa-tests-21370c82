@@ -22,8 +22,8 @@ asserted.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 
@@ -38,16 +38,16 @@ from src.api.mule.coa_service import (
 )
 from src.discovery.search_filters import parse_filters
 
-AuditCall = Tuple[Tuple[str, str, str], Dict[str, Any]]
+AuditCall = tuple[tuple[str, str, str], dict[str, Any]]
 
 
 @dataclass
 class FakeResponse:
     """The object ``COAService`` receives back from ``ensure_ok``."""
 
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.payload
 
 
@@ -62,16 +62,16 @@ class FakeMuleClient:
 
     def __init__(
         self,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
         *,
-        transport_error: Optional[BaseException] = None,
-        response_error: Optional[BaseException] = None,
+        transport_error: BaseException | None = None,
+        response_error: BaseException | None = None,
     ) -> None:
         self.payload = payload if payload is not None else {"records": []}
         self.transport_error = transport_error
         self.response_error = response_error
-        self.get_paths: List[str] = []
-        self.post_calls: List[Tuple[str, Dict[str, Any]]] = []
+        self.get_paths: list[str] = []
+        self.post_calls: list[tuple[str, dict[str, Any]]] = []
 
     def get(self, path: str) -> FakeResponse:
         self.get_paths.append(path)
@@ -92,7 +92,7 @@ class FakeMuleClient:
 
 
 @pytest.fixture(autouse=True)
-def audit_calls(monkeypatch: pytest.MonkeyPatch) -> List[AuditCall]:
+def audit_calls(monkeypatch: pytest.MonkeyPatch) -> list[AuditCall]:
     """Replace the module's audit sink with an in-process recorder.
 
     Applied to every test in this module: the audit trail is a persistence
@@ -101,13 +101,13 @@ def audit_calls(monkeypatch: pytest.MonkeyPatch) -> List[AuditCall]:
     required to record an event. Tests that are not about the audit event itself
     assert against ``audit_calls`` rather than opening an audit store.
     """
-    calls: List[AuditCall] = []
+    calls: list[AuditCall] = []
 
     def _record(
         actor: str,
         action: str,
         resource: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         calls.append(((actor, action, resource), dict(metadata or {})))
 
@@ -119,7 +119,7 @@ def _mule_failure() -> MuleApiError:
     return MuleApiError(code="mule_down", message="the Mule API is unreachable")
 
 
-def _search_payload() -> Dict[str, Any]:
+def _search_payload() -> dict[str, Any]:
     return {
         "records": [
             {
@@ -218,8 +218,8 @@ class TestSearchResponseParsing:
 
         records = await COAService(mule_client=client).search_coa(COAFilter())
 
-        assert records[0].created_at == datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
-        assert records[1].created_at == datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
+        assert records[0].created_at == datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
+        assert records[1].created_at == datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
 
     async def test_the_listing_response_does_not_invent_detail_only_fields(self) -> None:
         client = FakeMuleClient(_search_payload())
@@ -236,7 +236,7 @@ class TestSearchResponseParsing:
         assert await COAService(mule_client=client).search_coa(COAFilter()) == []
 
     async def test_a_search_failure_is_raised_to_the_caller(
-        self, audit_calls: List[AuditCall]
+        self, audit_calls: list[AuditCall]
     ) -> None:
         client = FakeMuleClient(_search_payload(), response_error=_mule_failure())
 
@@ -249,7 +249,7 @@ class TestSearchResponseParsing:
 
 class TestSearchAudit:
     async def test_the_search_is_written_to_the_audit_trail(
-        self, audit_calls: List[AuditCall]
+        self, audit_calls: list[AuditCall]
     ) -> None:
         client = FakeMuleClient(_search_payload())
         filters = COAFilter(q="COA-1001", plant="PLANT-A", status="completed")
@@ -274,7 +274,7 @@ class TestSearchAudit:
 
 
 class TestDetailLookup:
-    def _detail_payload(self) -> Dict[str, Any]:
+    def _detail_payload(self) -> dict[str, Any]:
         return {
             "customer_id": "CUST-77",
             "plant_code": "PLANT-A",
@@ -314,7 +314,7 @@ class TestDetailLookup:
         assert record.plant_code == "PLANT-A"
         assert record.completion_status is CompletionStatus.COMPLETED
         assert record.test_results == {"missing": [], "fields": {}}
-        assert record.generated_at == datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
+        assert record.generated_at == datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
         assert record.completed_at == "2026-03-01T12:05:00Z"
 
     async def test_the_record_falls_back_to_the_requested_coa_number(self) -> None:
@@ -347,7 +347,7 @@ class TestDetailLookup:
             await COAService(mule_client=client).get_coa_by_number("COA-1001")
 
     async def test_the_detail_read_is_written_to_the_audit_trail(
-        self, audit_calls: List[AuditCall]
+        self, audit_calls: list[AuditCall]
     ) -> None:
         client = FakeMuleClient(self._detail_payload())
 
@@ -359,7 +359,7 @@ class TestDetailLookup:
         assert metadata == {"coa_number": "COA-1001", "source": "mule_api"}
 
     async def test_a_failed_lookup_writes_no_audit_event(
-        self, audit_calls: List[AuditCall]
+        self, audit_calls: list[AuditCall]
     ) -> None:
         client = FakeMuleClient(self._detail_payload(), response_error=_mule_failure())
 

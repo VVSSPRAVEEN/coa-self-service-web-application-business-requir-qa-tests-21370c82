@@ -20,7 +20,8 @@ no environment, no clock dependence.
 
 from __future__ import annotations
 
-from typing import Any, Iterator, Optional
+from collections.abc import Iterator
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,8 +32,8 @@ from src.api.mule.endpoints import app
 from src.integration.jde import (
     CoaStatusPath,
     JDEClient,
-    JDEConfigurationError,
     JDECOAStatus,
+    JDEConfigurationError,
     JDEError,
     JDEFieldReader,
     JDEPayloadError,
@@ -62,7 +63,7 @@ def _transport(
     *,
     fields: Any = None,
     status: Any = None,
-    error: Optional[BaseException] = None,
+    error: BaseException | None = None,
 ) -> RecordingTransport:
     """Build a recording transport preloaded with the two live JDE documents."""
     transport = RecordingTransport(
@@ -352,7 +353,7 @@ class _StubCoaService:
     async def search_coa(self, filters: Any) -> list[COARecord]:
         return list(self._records)
 
-    async def get_coa_by_number(self, coa_number: str) -> Optional[COARecord]:
+    async def get_coa_by_number(self, coa_number: str) -> COARecord | None:
         return self._by_number.get(coa_number)
 
 

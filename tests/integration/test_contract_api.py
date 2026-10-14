@@ -29,8 +29,9 @@ import hmac
 import json
 import os
 import time
-from datetime import datetime, timedelta, timezone
-from typing import Any, Iterator, Optional
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -40,6 +41,7 @@ from src.api.mule.coa_service import COARecord, CompletionStatus, MuleApiError, 
 from src.api.mule.endpoints import app
 from src.documents.print import PrintService
 from src.documents.s3_service.presigned_url_service import PresignedUrlResult
+
 HS256_SECRET = os.environ.get("CONTRACT_TEST_HS256_SECRET") or os.urandom(48).hex()
 PRINT_SECRET = b"contract-test-print-reauth-secret"
 
@@ -80,7 +82,7 @@ def _complete_record() -> COARecord:
         status="completed",
         file_size_bytes=20481,
         test_results=PASSING_RESULTS,
-        generated_at=datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 3, 1, 12, 0, tzinfo=UTC),
         completed_at="2026-03-01T12:05:00Z",
     )
 
@@ -107,7 +109,7 @@ class FakeCoaService:
         self.records = list(records)
         self.by_number = {record.coa_number: record for record in self.records}
         self.search_filters: list[Any] = []
-        self.error: Optional[Exception] = None
+        self.error: Exception | None = None
 
     async def search_coa(self, filters: Any) -> list[COARecord]:
         self.search_filters.append(filters)
@@ -115,7 +117,7 @@ class FakeCoaService:
             raise self.error
         return list(self.records)
 
-    async def get_coa_by_number(self, coa_number: str) -> Optional[COARecord]:
+    async def get_coa_by_number(self, coa_number: str) -> COARecord | None:
         if self.error is not None:
             raise self.error
         return self.by_number.get(coa_number)
@@ -131,9 +133,9 @@ class FakePresignedService:
         self,
         key: str,
         method: str = "GET",
-        expiry_seconds: Optional[int] = None,
-        user_id: Optional[str] = None,
-        coa_id: Optional[str] = None,
+        expiry_seconds: int | None = None,
+        user_id: str | None = None,
+        coa_id: str | None = None,
     ) -> PresignedUrlResult:
         lifetime = expiry_seconds or 900
         self.calls.append(
@@ -153,7 +155,7 @@ class FakePresignedService:
             bucket="coa-documents",
             key=key,
             method=method.upper(),
-            expires_at=datetime.now(timezone.utc) + timedelta(seconds=lifetime),
+            expires_at=datetime.now(UTC) + timedelta(seconds=lifetime),
             request_id="stub-request-id",
             scope_hash="stub-scope-hash",
         )
@@ -285,7 +287,7 @@ def _reauth_token(user_id: str, coa_id: str) -> str:
     )
     digest = hmac.new(
         PRINT_SECRET,
-        f"{user_id}|{coa_id}|{issued_at}".encode("utf-8"),
+        f"{user_id}|{coa_id}|{issued_at}".encode(),
         hashlib.sha256,
     ).digest()
     signature = base64.urlsafe_b64encode(digest).decode("ascii")
@@ -999,8 +1001,8 @@ class StubReauthMintingPrintService:
     def __init__(
         self,
         token: str = "reauth.token.value",
-        error: Optional[BaseException] = None,
-        delegate: Optional[PrintService] = None,
+        error: BaseException | None = None,
+        delegate: PrintService | None = None,
     ) -> None:
         self.token = token
         self.error = error

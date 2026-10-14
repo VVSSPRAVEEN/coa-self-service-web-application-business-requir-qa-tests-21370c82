@@ -21,7 +21,7 @@ scope, which is the claim under test.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -145,7 +145,7 @@ class TestFailsClosed:
 class TestCallerNormalisation:
     """The same caller expressed four ways must authorise identically."""
 
-    CALLERS = {
+    CALLERS: ClassVar[dict[str, object]] = {
         "bare string": "internal",
         "mapping": {"roles": ["internal"]},
         "attribute": User(user_id="u", username="u", roles=["internal"]),

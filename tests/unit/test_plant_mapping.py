@@ -13,7 +13,7 @@ errors, and the HTTP tests assert the status codes a client actually sees.
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 import pytest
 from fastapi import FastAPI

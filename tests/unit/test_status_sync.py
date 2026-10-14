@@ -11,7 +11,7 @@ Timestamps are fixed so the suite never depends on the wall clock.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -31,7 +31,7 @@ from src.integration.sync.webhook import (
     validate_webhook_payload,
 )
 
-NOW = datetime(2026, 3, 31, 12, 0, 0)
+NOW = datetime(2026, 3, 31, 12, 0, 0, tzinfo=UTC)
 
 
 def _delta(

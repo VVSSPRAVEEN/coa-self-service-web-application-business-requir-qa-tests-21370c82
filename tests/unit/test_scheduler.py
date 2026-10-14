@@ -24,9 +24,10 @@ from __future__ import annotations
 
 import base64
 import json
-from datetime import datetime, timezone
+from collections.abc import Mapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any
 
 import pytest
 
@@ -57,7 +58,7 @@ class FakeClock(SystemClock):
     """A clock that records sleeps instead of performing them."""
 
     def __init__(self) -> None:
-        self.slept: List[float] = []
+        self.slept: list[float] = []
 
     def sleep(self, seconds: float) -> None:
         self.slept.append(seconds)
@@ -66,11 +67,11 @@ class FakeClock(SystemClock):
 class RecordingFetcher:
     """A :class:`~src.workers.scheduler.Fetcher` that returns canned documents."""
 
-    def __init__(self, documents: Optional[List[dict[str, Any]]] = None) -> None:
+    def __init__(self, documents: list[dict[str, Any]] | None = None) -> None:
         self.documents = list(documents or [])
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
-    def __call__(self, url: str) -> List[dict[str, Any]]:
+    def __call__(self, url: str) -> list[dict[str, Any]]:
         self.calls.append(url)
         return list(self.documents)
 
@@ -84,7 +85,7 @@ class InterruptingClock(FakeClock):
 
 
 @pytest.fixture
-def workspace(tmp_path) -> Dict[str, Path]:
+def workspace(tmp_path) -> dict[str, Path]:
     """A scheduler workspace entirely inside the test's temporary directory."""
     paths = {
         "root": tmp_path,
@@ -109,7 +110,7 @@ _DIRECTORIES = {
 }
 
 
-def _env(workspace: Mapping[str, Path], **overrides: str) -> Dict[str, str]:
+def _env(workspace: Mapping[str, Path], **overrides: str) -> dict[str, str]:
     """Return an environment pointing every scheduler directory at ``workspace``.
 
     A partial mapping is accepted: any directory the caller did not name falls
@@ -133,7 +134,7 @@ def _drop(directory: Path, name: str, content: str) -> Path:
     return path
 
 
-def _outcome(outcomes: List[JobOutcome], name: str) -> JobOutcome:
+def _outcome(outcomes: list[JobOutcome], name: str) -> JobOutcome:
     """Return the outcome recorded for one job."""
     return next(outcome for outcome in outcomes if outcome.name == name)
 
@@ -259,7 +260,7 @@ class TestStatusSyncJob:
                     "status": "SUBMITTED",
                     "source": "JDE",
                     "sequence_id": 7,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
             ]
         )
@@ -282,7 +283,7 @@ class TestStatusSyncJob:
             "status": "SUBMITTED",
             "source": "JDE",
             "sequence_id": 1,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         scheduler = Scheduler(
             env=_env(workspace, SYNC_BASE_URL="http://sync.internal:8081"),
@@ -316,7 +317,7 @@ class TestStatusSyncJob:
 def _seed_dlq(workspace: Mapping[str, Path], *, replayable: bool) -> str:
     """Write one dead-letter record and return its id."""
     dlq = DeadLetterQueue(str(workspace["dlq"]))
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     if replayable:
         payload = {
             "batch_id": "9010",
@@ -380,7 +381,7 @@ class TestDlqRedriveJob:
 
 def _queue_alert(directory: Path, **overrides: Any) -> Path:
     """Write one alert document into the queue and return its path."""
-    alert: Dict[str, Any] = {
+    alert: dict[str, Any] = {
         "report_window": "2026-03-01",
         "subject": "Missing COA report 2026-03-01",
         "body_text": "One COA is blocking a shipment.",
@@ -602,7 +603,7 @@ class TestRunForever:
                 super().__init__(**kwargs)
                 self.cycles = 0
 
-            def run_once(self) -> List[JobOutcome]:
+            def run_once(self) -> list[JobOutcome]:
                 self.cycles += 1
                 if self.cycles == 3:
                     raise KeyboardInterrupt
@@ -639,7 +640,7 @@ class TestRunForever:
 
 class TestPackageExports:
     def test_the_package_resolves_its_public_names_lazily(self) -> None:
-        import src.workers as workers
+        from src import workers
 
         assert workers.Scheduler is Scheduler
         assert workers.JOB_NAMES == JOB_NAMES

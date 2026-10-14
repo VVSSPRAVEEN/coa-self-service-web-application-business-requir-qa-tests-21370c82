@@ -12,8 +12,8 @@ metadata left alone, exactly as an attacker editing a database row would.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -154,7 +154,7 @@ class TestChainVerificationHappyPath:
             event_type=AuditEventType.ACCESS,
             user_sub="user-1",
             resource_id="coa:COA-1001",
-            timestamp=datetime(2026, 3, 31, 12, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2026, 3, 31, 12, 0, tzinfo=UTC),
         )
         sealed = AuditChain.seal_entry(entry, GENESIS, 0)
 

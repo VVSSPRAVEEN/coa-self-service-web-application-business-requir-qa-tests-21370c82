@@ -16,7 +16,7 @@ implementation instead of silently skipping when a module path drifts.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -80,12 +80,12 @@ def test_expiry_is_bounded_by_maximum(service: PresignedUrlService) -> None:
         service.generate_signed_url(key="coa/secure/COA-12345.pdf", expiry_seconds=9999)
 
     result = service.generate_signed_url(key="coa/secure/COA-12345.pdf", expiry_seconds=900)
-    assert result.expires_at > datetime.now(timezone.utc)
+    assert result.expires_at > datetime.now(UTC)
 
 
 def test_default_expiry_is_short(service: PresignedUrlService) -> None:
     result = service.generate_signed_url(key="coa/secure/COA-12345.pdf")
-    assert result.expires_at <= datetime.now(timezone.utc).replace(microsecond=0) + timedelta(seconds=300)
+    assert result.expires_at <= datetime.now(UTC).replace(microsecond=0) + timedelta(seconds=300)
 
 
 def test_invalid_method_is_rejected(service: PresignedUrlService) -> None:
@@ -154,7 +154,7 @@ def test_from_env_reads_configuration() -> None:
 
 def test_explicit_expiry_overrides_config(service: PresignedUrlService) -> None:
     result = service.generate_signed_url(key="coa/secure/COA-12345.pdf", expiry_seconds=600)
-    assert result.expires_at <= datetime.now(timezone.utc).replace(microsecond=0) + timedelta(seconds=600)
+    assert result.expires_at <= datetime.now(UTC).replace(microsecond=0) + timedelta(seconds=600)
 
 
 def test_key_normalization_strips_leading_slash(service: PresignedUrlService) -> None:
@@ -196,7 +196,7 @@ def test_fr6_gate_allows_signing_once_fields_populated(service: PresignedUrlServ
 
     assert result.signed_url is not None
     assert result.scope_hash is not None
-    assert result.expires_at > datetime.now(timezone.utc)
+    assert result.expires_at > datetime.now(UTC)
 
 
 def test_fr6_gate_is_evaluated_before_credentials_are_used(service: PresignedUrlService) -> None:
