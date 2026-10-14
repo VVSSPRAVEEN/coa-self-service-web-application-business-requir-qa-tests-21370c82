@@ -50,7 +50,7 @@ class TestMinimumWindow:
         assert (expiry - ISSUED).days == 1826
 
     def test_a_naive_timestamp_is_treated_as_utc(self) -> None:
-        naive = datetime(2026, 3, 31)  # noqa: DTZ001 - the naive input is the point of this test
+        naive = datetime(2026, 3, 31)
 
         expiry = RetentionPolicy().get_expiry_date(naive)
 

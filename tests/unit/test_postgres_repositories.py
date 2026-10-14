@@ -403,6 +403,7 @@ class TestFactories:
     def test_the_repository_default_is_the_selected_backend(self, monkeypatch) -> None:
         monkeypatch.setenv("P3_AUDIT_DSN", DSN)
         monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.delenv("P3_PERSISTENCE_BACKEND", raising=False)
         assert isinstance(AuditRepository()._storage, PostgresAuditStorage)
 
     def test_the_registry_default_is_the_in_memory_store_without_a_dsn(
@@ -416,6 +417,7 @@ class TestFactories:
         self, monkeypatch
     ) -> None:
         monkeypatch.setenv("P3_AUDIT_DSN", DSN)
+        monkeypatch.delenv("P3_PERSISTENCE_BACKEND", raising=False)
         assert isinstance(_store(), PostgresUserRegistry)
 
 
@@ -814,6 +816,7 @@ class TestPostgresAuditStorage:
         """Selecting the durable store must not require a reachable server."""
         monkeypatch.setenv("P3_AUDIT_DSN", DSN)
         monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.delenv("P3_PERSISTENCE_BACKEND", raising=False)
         repository = AuditRepository()
         assert isinstance(repository._storage, PostgresAuditStorage)
 
